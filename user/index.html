@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RoomFlow - User Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Archivo:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-layer"></div>
+
+    <main>
+      <section id="authView" class="card auth-view">
+        <div class="brand-row">
+          <img src="imgs/roomflow-mark.svg" alt="RoomFlow" class="brand-mark" />
+          <div>
+            <h1>RoomFlow</h1>
+            <p>Guest Booking Portal</p>
+          </div>
+        </div>
+
+        <div class="auth-switch">
+          <button id="showLoginBtn" class="switch-btn active" type="button">
+            Sign In
+          </button>
+          <button id="showRegisterBtn" class="switch-btn" type="button">
+            Create Account
+          </button>
+        </div>
+
+        <form id="loginForm" class="form-grid">
+          <label>
+            Email
+            <input
+              id="loginEmail"
+              type="email"
+              required
+              placeholder="you@example.com"
+            />
+          </label>
+          <label>
+            Password
+            <input
+              id="loginPassword"
+              type="password"
+              required
+              placeholder="Enter your password"
+            />
+          </label>
+          <button type="submit" class="btn primary">Sign In</button>
+        </form>
+
+        <form id="registerForm" class="form-grid hidden">
+          <label>
+            Full Name
+            <input
+              id="registerName"
+              type="text"
+              required
+              placeholder="Your full name"
+            />
+          </label>
+          <label>
+            Email
+            <input
+              id="registerEmail"
+              type="email"
+              required
+              placeholder="you@example.com"
+            />
+          </label>
+          <label>
+            Password
+            <input
+              id="registerPassword"
+              type="password"
+              required
+              minlength="6"
+              placeholder="At least 6 characters"
+            />
+          </label>
+          <label>
+            Confirm Password
+            <input
+              id="registerConfirmPassword"
+              type="password"
+              required
+              minlength="6"
+              placeholder="Repeat your password"
+            />
+          </label>
+          <button type="submit" class="btn primary">Create Account</button>
+        </form>
+
+        <p id="authMessage" class="message"></p>
+      </section>
+
+      <section id="appView" class="app-layout hidden">
+        <aside class="sidebar card">
+          <div class="brand-row sidebar-brand">
+            <img
+              src="imgs/roomflow-mark.svg"
+              alt="RoomFlow"
+              class="brand-mark"
+            />
+            <div>
+              <h2>RoomFlow</h2>
+              <p>User Dashboard</p>
+            </div>
+          </div>
+
+          <div class="user-chip">
+            <strong id="userDisplayName">Guest</strong>
+            <span id="userDisplayEmail"></span>
+          </div>
+
+          <nav class="nav-list" aria-label="User Sections">
+            <button class="nav-btn active" data-panel="discover" type="button">
+              Discover Rooms
+            </button>
+            <button class="nav-btn" data-panel="bookings" type="button">
+              My Bookings
+            </button>
+            <button class="nav-btn" data-panel="amenities" type="button">
+              Amenities
+            </button>
+            <button class="nav-btn" data-panel="payments" type="button">
+              Payments
+            </button>
+          </nav>
+
+          <button id="logoutBtn" class="btn">Logout</button>
+        </aside>
+
+        <section class="content-area">
+          <header class="card page-header">
+            <div class="page-header-row">
+              <div>
+                <h2>User Booking Center</h2>
+                <p>
+                  Book rooms, track reservations, and submit payments in
+                  realtime.
+                </p>
+              </div>
+
+              <div class="notif-wrap">
+                <button
+                  id="notificationToggleBtn"
+                  class="notif-btn"
+                  type="button"
+                  aria-label="Notifications"
+                  aria-expanded="false"
+                >
+                  <svg
+                    class="notif-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-5h-1V11a6 6 0 1 0-12 0v6H5a1 1 0 1 0 0 2h14a1 1 0 1 0 0-2zm-3 0H8V11a4 4 0 1 1 8 0v6z"
+                    ></path>
+                  </svg>
+                  <span id="notificationBadge" class="notif-badge hidden"
+                    >0</span
+                  >
+                </button>
+
+                <section id="notificationPanel" class="notif-panel hidden">
+                  <h3>Notifications</h3>
+                  <div id="notificationsList" class="notif-list"></div>
+                </section>
+              </div>
+            </div>
+          </header>
+
+          <section class="panel-stack">
+            <article id="panel-discover" class="card panel">
+              <div class="panel-grid">
+                <div>
+                  <h3>Available Rooms</h3>
+                  <p class="muted">
+                    Realtime room availability from the booking system.
+                  </p>
+                  <div id="roomsList" class="room-grid"></div>
+                </div>
+
+                <div class="card inner-card">
+                  <h3>Book A Room</h3>
+                  <form id="bookingForm" class="form-grid">
+                    <label>
+                      Select Room
+                      <select id="bookingRoomId" required>
+                        <option value="">Select Room</option>
+                      </select>
+                    </label>
+                    <label>
+                      Check-In Date
+                      <input id="checkInDate" type="date" required />
+                    </label>
+                    <label>
+                      Check-Out Date
+                      <input id="checkOutDate" type="date" required />
+                    </label>
+                    <label>
+                      Number of Guests
+                      <input
+                        id="guestCount"
+                        type="number"
+                        min="1"
+                        required
+                        placeholder="1"
+                      />
+                    </label>
+                    <label>
+                      Notes (Optional)
+                      <input
+                        id="bookingNotes"
+                        type="text"
+                        placeholder="Late check-in, extra bed, etc."
+                      />
+                    </label>
+                    <button type="submit" class="btn primary">
+                      Submit Booking
+                    </button>
+                  </form>
+                  <p id="bookingMessage" class="message"></p>
+                </div>
+              </div>
+            </article>
+
+            <article id="panel-bookings" class="card panel hidden">
+              <h3>My Bookings</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Room</th>
+                      <th>Dates</th>
+                      <th>Guests</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bookingsTableBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article id="panel-amenities" class="card panel hidden">
+              <h3>Amenities</h3>
+              <p class="muted">
+                Explore available amenities and optional services.
+              </p>
+              <div id="amenitiesList" class="amenities-grid"></div>
+              <p id="amenityMessage" class="message"></p>
+            </article>
+
+            <article id="panel-payments" class="card panel hidden">
+              <div class="panel-grid payments-grid">
+                <div class="card inner-card">
+                  <h3>Submit Payment</h3>
+                  <form id="paymentForm" class="form-grid">
+                    <label>
+                      Select Booking
+                      <select id="paymentBookingId" required>
+                        <option value="">Select Booking</option>
+                      </select>
+                    </label>
+                    <label>
+                      Amount
+                      <input
+                        id="paymentAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Method
+                      <select id="paymentMethod" required>
+                        <option value="online">Online</option>
+                        <option value="card">Card</option>
+                        <option value="bank-transfer">Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                      </select>
+                    </label>
+                    <button type="submit" class="btn primary">
+                      Submit Payment
+                    </button>
+                  </form>
+                  <p id="paymentMessage" class="message"></p>
+                </div>
+
+                <div>
+                  <h3>My Payments</h3>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Booking</th>
+                          <th>Amount</th>
+                          <th>Method</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody id="paymentsTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

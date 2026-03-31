@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Room Booking Management - Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Archivo:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-layer"></div>
+
+    <main class="app-shell">
+      <section id="loginView" class="card login-card">
+        <div class="brand-pill">Admin Portal</div>
+        <h1>Room Booking Management</h1>
+        <p>
+          Manage reservations, check-ins, amenities, and payments from one
+          place.
+        </p>
+
+        <form id="loginForm" class="grid-1">
+          <label>
+            Username
+            <input id="username" type="text" required placeholder="admin" />
+          </label>
+          <label>
+            Password
+            <input
+              id="password"
+              type="password"
+              required
+              placeholder="admin123"
+            />
+          </label>
+          <button type="submit" class="btn primary">Login as Admin</button>
+          <p id="loginMessage" class="message"></p>
+        </form>
+      </section>
+
+      <section id="dashboardView" class="hidden">
+        <section class="dashboard-layout">
+          <aside class="sidebar card">
+            <div class="sidebar-head">
+              <h3>RoomFlow</h3>
+              <p>Admin Console</p>
+            </div>
+
+            <nav class="tabs" aria-label="Dashboard Sections">
+              <button class="tab-btn active" data-tab="overview">
+                Overview
+              </button>
+              <button class="tab-btn" data-tab="rooms">Rooms</button>
+              <button class="tab-btn" data-tab="bookings">Bookings</button>
+              <button class="tab-btn" data-tab="checkins">Check-Ins</button>
+              <button class="tab-btn" data-tab="amenities">Amenities</button>
+              <button class="tab-btn" data-tab="payments">Payments</button>
+            </nav>
+
+            <button id="logoutBtn" class="btn sidebar-logout">Logout</button>
+          </aside>
+
+          <div class="content-area">
+            <header class="topbar card">
+              <div>
+                <h2>Admin Dashboard</h2>
+                <p>Realtime operations for rooms, bookings, and billing.</p>
+              </div>
+            </header>
+
+            <section class="tab-panels">
+              <article class="card tab-panel" id="panel-overview">
+                <h3>Overview</h3>
+                <p class="section-note">A quick summary of live operations.</p>
+                <section class="stats-grid">
+                  <article class="stat">
+                    <h3>Total Rooms</h3>
+                    <strong id="totalRooms">0</strong>
+                  </article>
+                  <article class="stat">
+                    <h3>Active Bookings</h3>
+                    <strong id="activeBookings">0</strong>
+                  </article>
+                  <article class="stat">
+                    <h3>Checked-In Guests</h3>
+                    <strong id="checkedInCount">0</strong>
+                  </article>
+                  <article class="stat">
+                    <h3>Revenue (Paid)</h3>
+                    <strong id="paidRevenue">$0.00</strong>
+                  </article>
+                </section>
+              </article>
+
+              <article class="card tab-panel hidden" id="panel-rooms">
+                <h3>Rooms</h3>
+                <form id="roomForm" class="grid-2">
+                  <input
+                    id="roomNumber"
+                    placeholder="Room Number (e.g. 101)"
+                    required
+                  />
+                  <input
+                    id="roomType"
+                    placeholder="Type (Deluxe, Hall, Desk)"
+                    required
+                  />
+                  <input
+                    id="roomCapacity"
+                    type="number"
+                    min="1"
+                    placeholder="Capacity"
+                    required
+                  />
+                  <input
+                    id="roomPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Price / Night"
+                    required
+                  />
+                  <select id="roomStatus" required>
+                    <option value="available">Available</option>
+                    <option value="occupied">Occupied</option>
+                    <option value="maintenance">Maintenance</option>
+                  </select>
+                  <button type="submit" class="btn primary">Add Room</button>
+                </form>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Type</th>
+                        <th>Cap</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="roomsTableBody"></tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="card tab-panel hidden" id="panel-bookings">
+                <h3>Bookings</h3>
+                <form id="bookingForm" class="grid-2">
+                  <input id="guestName" placeholder="Guest Name" required />
+                  <select id="bookingRoomId" required>
+                    <option value="">Select Room</option>
+                  </select>
+                  <input id="checkInDate" type="date" required />
+                  <input id="checkOutDate" type="date" required />
+                  <input
+                    id="guestCount"
+                    type="number"
+                    min="1"
+                    placeholder="Guests"
+                    required
+                  />
+                  <input
+                    id="totalAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Total Amount"
+                    required
+                  />
+                  <select id="bookingStatus" required>
+                    <option value="reserved">Reserved</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="checked-in">Checked-In</option>
+                    <option value="checked-out">Checked-Out</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <select id="paymentStatus" required>
+                    <option value="unpaid">Unpaid</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                  <button type="submit" class="btn primary">
+                    Create Booking
+                  </button>
+                </form>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Guest</th>
+                        <th>Room</th>
+                        <th>Dates</th>
+                        <th>Status</th>
+                        <th>Payment</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="bookingsTableBody"></tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="card tab-panel hidden" id="panel-checkins">
+                <h3>Check-Ins</h3>
+                <form id="checkinForm" class="grid-2">
+                  <select id="checkinBookingId" required>
+                    <option value="">Select Booking</option>
+                  </select>
+                  <input
+                    id="checkinGuestName"
+                    placeholder="Guest Name"
+                    required
+                  />
+                  <select id="checkinRoomId" required>
+                    <option value="">Select Room</option>
+                  </select>
+                  <select id="checkinStatus" required>
+                    <option value="in">Checked-In</option>
+                    <option value="out">Checked-Out</option>
+                  </select>
+                  <button type="submit" class="btn primary">
+                    Save Check-In
+                  </button>
+                </form>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Guest</th>
+                        <th>Booking</th>
+                        <th>Room</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="checkinsTableBody"></tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="card tab-panel hidden" id="panel-amenities">
+                <h3>Amenities</h3>
+                <form id="amenityForm" class="grid-2">
+                  <input id="amenityName" placeholder="Amenity Name" required />
+                  <input
+                    id="amenityLocation"
+                    placeholder="Location / Floor"
+                    required
+                  />
+                  <input
+                    id="amenityPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Price"
+                    required
+                  />
+                  <select id="amenityAvailability" required>
+                    <option value="available">Available</option>
+                    <option value="limited">Limited</option>
+                    <option value="unavailable">Unavailable</option>
+                  </select>
+                  <button type="submit" class="btn primary">Add Amenity</button>
+                </form>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Location</th>
+                        <th>Price</th>
+                        <th>Availability</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="amenitiesTableBody"></tbody>
+                  </table>
+                </div>
+
+                <h3 class="subsection-heading">Amenity Requests</h3>
+                <p class="section-note">
+                  User-submitted amenity requests waiting for admin action.
+                </p>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Guest</th>
+                        <th>Amenity</th>
+                        <th>Location</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Requested</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="amenityRequestsTableBody"></tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="card tab-panel hidden" id="panel-payments">
+                <h3>Payments</h3>
+                <form id="paymentForm" class="grid-2">
+                  <select id="paymentBookingId" required>
+                    <option value="">Select Booking</option>
+                  </select>
+                  <input
+                    id="paymentGuestName"
+                    placeholder="Guest Name"
+                    required
+                  />
+                  <input
+                    id="paymentAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Amount"
+                    required
+                  />
+                  <select id="paymentMethod" required>
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="transfer">Bank Transfer</option>
+                    <option value="online">Online</option>
+                  </select>
+                  <select id="paymentState" required>
+                    <option value="paid">Paid</option>
+                    <option value="pending">Pending</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                  <button type="submit" class="btn primary">
+                    Record Payment
+                  </button>
+                </form>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Guest</th>
+                        <th>Booking</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody"></tbody>
+                  </table>
+                </div>
+              </article>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <section id="editModal" class="modal hidden" aria-hidden="true">
+      <div
+        class="modal-dialog modal-card card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+      >
+        <header class="modal-header">
+          <h3 id="modalTitle">Edit Record</h3>
+          <button id="modalCloseBtn" class="modal-close" type="button">
+            x
+          </button>
+        </header>
+
+        <form id="modalForm" class="modal-form">
+          <div id="modalFields" class="modal-fields"></div>
+          <div class="modal-actions">
+            <button id="modalCancelBtn" class="btn-ghost" type="button">
+              Cancel
+            </button>
+            <button class="btn-primary" type="submit">Save Changes</button>
+          </div>
+          <p id="modalMessage" class="modal-message"></p>
+        </form>
+      </div>
+    </section>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
