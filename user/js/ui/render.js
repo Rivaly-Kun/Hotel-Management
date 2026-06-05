@@ -1,3 +1,5 @@
+import { getRoomImageUrl } from "../services/dataService.js";
+
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 
 const escapeHtml = (value) =>
@@ -7,6 +9,18 @@ const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+
+const roomImageCache = {};
+
+async function loadRoomImage(roomId) {
+  if (roomImageCache[roomId] !== undefined) {
+    return roomImageCache[roomId];
+  }
+
+  const url = await getRoomImageUrl(roomId);
+  roomImageCache[roomId] = url;
+  return url;
+}
 
 function renderRooms(container, rooms) {
   if (!rooms.length) {
@@ -19,17 +33,33 @@ function renderRooms(container, rooms) {
     .map(
       (room) => `
       <article class="room-card">
-        <h4>Room ${escapeHtml(room.number)}</h4>
-        <p>${escapeHtml(room.type)} | Capacity ${escapeHtml(room.capacity)}</p>
-        <p><strong>${money(room.price)}</strong> / night</p>
-        <span class="room-status">${escapeHtml(room.status || "available")}</span>
-        <div class="card-actions">
-          <button class="card-action" data-room-pick="${room.id}">Book This Room</button>
+        <div class="room-img-wrap" data-room-img="${room.id}">
+          <div class="room-img-placeholder">
+            <span class="room-img-icon">🏨</span>
+          </div>
+        </div>
+        <div class="room-card-body">
+          <h4>Room ${escapeHtml(room.number)}</h4>
+          <p>${escapeHtml(room.type)} | Capacity ${escapeHtml(room.capacity)}</p>
+          <p><strong>${money(room.price)}</strong> / night</p>
+          <span class="room-status">${escapeHtml(room.status || "available")}</span>
+          <div class="card-actions">
+            <button class="card-action" data-room-pick="${room.id}">Book This Room</button>
+          </div>
         </div>
       </article>
     `,
     )
     .join("");
+
+  // Load images asynchronously
+  rooms.forEach(async (room) => {
+    const url = await loadRoomImage(room.id);
+    const wrap = container.querySelector(`[data-room-img="${room.id}"]`);
+    if (wrap && url) {
+      wrap.innerHTML = `<img class="room-img" src="${url}" alt="Room ${escapeHtml(room.number)}" loading="lazy" />`;
+    }
+  });
 }
 
 function renderRoomOptions(select, rooms) {
@@ -52,7 +82,7 @@ function renderRoomOptions(select, rooms) {
 function renderBookings(tbody, bookings, roomsById) {
   if (!bookings.length) {
     tbody.innerHTML =
-      '<tr><td colspan="6" class="empty-state">No bookings yet. Start by reserving a room.</td></tr>';
+      '<tr><td colspan="7" class="empty-state">No bookings yet. Start by reserving a room.</td></tr>';
     return;
   }
 
@@ -70,43 +100,12 @@ function renderBookings(tbody, bookings, roomsById) {
           <td>${escapeHtml(roomLabel)}</td>
           <td>${escapeHtml(booking.checkInDate)} to ${escapeHtml(booking.checkOutDate)}</td>
           <td>${escapeHtml(booking.guestCount)}</td>
+          <td>${escapeHtml(booking.guestName || "-")}</td>
           <td>${money(booking.totalAmount)}</td>
           <td>${escapeHtml(booking.status || "reserved")}</td>
           <td>${escapeHtml(booking.paymentStatus || "unpaid")}</td>
         </tr>
       `;
-    })
-    .join("");
-}
-
-function renderAmenities(container, amenities) {
-  if (!amenities.length) {
-    container.innerHTML =
-      '<div class="empty-state">No amenities are listed right now.</div>';
-    return;
-  }
-
-  container.innerHTML = amenities
-    .map((amenity) => {
-      const availability = String(
-        amenity.availability || "available",
-      ).toLowerCase();
-      const canRequest = availability !== "unavailable";
-      const actionMarkup = canRequest
-        ? `<button class="card-action request" data-amenity-request="${amenity.id}">Request Amenity</button>`
-        : '<button class="card-action disabled" type="button" disabled>Unavailable</button>';
-
-      return `
-      <article class="amenity-card">
-        <h4>${escapeHtml(amenity.name)}</h4>
-        <p>${escapeHtml(amenity.location)}</p>
-        <span class="amenity-price">${money(amenity.price)}</span>
-        <p>Status: ${escapeHtml(amenity.availability || "available")}</p>
-        <div class="card-actions">
-          ${actionMarkup}
-        </div>
-      </article>
-    `;
     })
     .join("");
 }
@@ -167,7 +166,6 @@ export {
   renderRooms,
   renderRoomOptions,
   renderBookings,
-  renderAmenities,
   renderBookingOptions,
   renderPayments,
 };

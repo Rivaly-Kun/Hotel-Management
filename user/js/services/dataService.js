@@ -7,7 +7,24 @@ import {
   set,
   update,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
-import { db } from "../firebase/config.js";
+import {
+  ref as storageRef,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+import { db, storage } from "../firebase/config.js";
+
+async function getRoomImageUrl(roomId) {
+  const extensions = ["jpg", "jpeg", "png", "webp"];
+  for (const ext of extensions) {
+    try {
+      const imageRef = storageRef(storage, `rooms/${roomId}.${ext}`);
+      return await getDownloadURL(imageRef);
+    } catch (_) {
+      // Try next extension
+    }
+  }
+  return null;
+}
 
 function mapToList(raw) {
   return Object.entries(raw || {}).map(([id, value]) => ({ id, ...value }));
@@ -102,18 +119,19 @@ async function createBooking(payload) {
 }
 
 async function createPayment(payload) {
+  const isPayLater = payload.payTiming === "later";
   const paymentRef = push(ref(db, "payments"));
   await set(paymentRef, {
     ...payload,
     source: "user-portal",
-    status: "pending",
+    status: isPayLater ? "pay-later" : "pending",
     createdAt: serverTimestamp(),
     createdAtMs: Date.now(),
   });
 
   if (payload.bookingId) {
     await update(ref(db, `bookings/${payload.bookingId}`), {
-      paymentStatus: "pending",
+      paymentStatus: isPayLater ? "pay-later" : "pending",
     });
   }
 
@@ -166,4 +184,5 @@ export {
   updateBooking,
   updatePayment,
   deletePayment,
+  getRoomImageUrl,
 };

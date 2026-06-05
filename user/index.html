@@ -127,9 +127,6 @@
             <button class="nav-btn" data-panel="bookings" type="button">
               My Bookings
             </button>
-            <button class="nav-btn" data-panel="amenities" type="button">
-              Amenities
-            </button>
             <button class="nav-btn" data-panel="payments" type="button">
               Payments
             </button>
@@ -218,6 +215,24 @@
                       />
                     </label>
                     <label>
+                      Guest Name
+                      <input
+                        id="bookingGuestName"
+                        type="text"
+                        required
+                        placeholder="Full name of guest"
+                      />
+                    </label>
+                    <label>
+                      Contact Number
+                      <input
+                        id="bookingContactNumber"
+                        type="tel"
+                        required
+                        placeholder="e.g. 09171234567"
+                      />
+                    </label>
+                    <label>
                       Notes (Optional)
                       <input
                         id="bookingNotes"
@@ -243,6 +258,7 @@
                       <th>Room</th>
                       <th>Dates</th>
                       <th>Guests</th>
+                      <th>Guest Name</th>
                       <th>Total</th>
                       <th>Status</th>
                       <th>Payment</th>
@@ -251,15 +267,6 @@
                   <tbody id="bookingsTableBody"></tbody>
                 </table>
               </div>
-            </article>
-
-            <article id="panel-amenities" class="card panel hidden">
-              <h3>Amenities</h3>
-              <p class="muted">
-                Explore available amenities and optional services.
-              </p>
-              <div id="amenitiesList" class="amenities-grid"></div>
-              <p id="amenityMessage" class="message"></p>
             </article>
 
             <article id="panel-payments" class="card panel hidden">
@@ -292,6 +299,34 @@
                         <option value="cash">Cash</option>
                       </select>
                     </label>
+                    <fieldset class="pay-timing-fieldset">
+                      <legend>Payment Timing</legend>
+                      <div class="pay-timing-options">
+                        <label class="pay-timing-label">
+                          <input
+                            type="radio"
+                            name="payTiming"
+                            value="now"
+                            checked
+                          />
+                          <span class="pay-timing-card">
+                            <strong>Pay Now</strong>
+                            <small>Submit payment immediately</small>
+                          </span>
+                        </label>
+                        <label class="pay-timing-label">
+                          <input
+                            type="radio"
+                            name="payTiming"
+                            value="later"
+                          />
+                          <span class="pay-timing-card">
+                            <strong>Pay Later</strong>
+                            <small>Pay at check-in</small>
+                          </span>
+                        </label>
+                      </div>
+                    </fieldset>
                     <button type="submit" class="btn primary">
                       Submit Payment
                     </button>

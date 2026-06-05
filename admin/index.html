@@ -58,7 +58,6 @@
               <button class="tab-btn" data-tab="rooms">Rooms</button>
               <button class="tab-btn" data-tab="bookings">Bookings</button>
               <button class="tab-btn" data-tab="checkins">Check-Ins</button>
-              <button class="tab-btn" data-tab="amenities">Amenities</button>
               <button class="tab-btn" data-tab="payments">Payments</button>
             </nav>
 
@@ -95,6 +94,84 @@
                     <strong id="paidRevenue">$0.00</strong>
                   </article>
                 </section>
+
+                <div class="overview-widgets">
+                  <!-- Left column: Recent activity lists -->
+                  <div class="overview-column">
+                    <div class="widget-card">
+                      <h4>Recent Bookings</h4>
+                      <div class="table-wrap widget-table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Guest</th>
+                              <th>Room</th>
+                              <th>Dates</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody id="overviewRecentBookings">
+                            <tr><td colspan="4" class="room-img-placeholder" style="padding: 10px;">Loading...</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    <div class="widget-card">
+                      <h4>Recent Payments</h4>
+                      <div class="table-wrap widget-table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Guest</th>
+                              <th>Amount</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody id="overviewRecentPayments">
+                            <tr><td colspan="3" class="room-img-placeholder" style="padding: 10px;">Loading...</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Right column: Occupancy & Navigation -->
+                  <div class="overview-column">
+                    <div class="widget-card">
+                      <h4>Room Occupancy Status</h4>
+                      <div class="occupancy-stats">
+                        <div class="occupancy-row">
+                          <span>Available</span>
+                          <strong id="occupancyAvailable">0</strong>
+                        </div>
+                        <div class="occupancy-row">
+                          <span>Occupied</span>
+                          <strong id="occupancyOccupied">0</strong>
+                        </div>
+                        <div class="occupancy-row">
+                          <span>Maintenance</span>
+                          <strong id="occupancyMaintenance">0</strong>
+                        </div>
+                      </div>
+                      <div class="occupancy-progress-bar">
+                        <div id="occupancyBarAvailable" class="progress-segment available" style="width: 0%;"></div>
+                        <div id="occupancyBarOccupied" class="progress-segment occupied" style="width: 0%;"></div>
+                        <div id="occupancyBarMaintenance" class="progress-segment maintenance" style="width: 0%;"></div>
+                      </div>
+                    </div>
+
+                    <div class="widget-card">
+                      <h4>Quick Navigation</h4>
+                      <div class="quick-nav-grid">
+                        <button class="action-btn edit" type="button" data-nav-tab="rooms" style="padding: 10px; font-size: 0.82rem; font-weight: 600;">Manage Rooms</button>
+                        <button class="action-btn edit" type="button" data-nav-tab="bookings" style="padding: 10px; font-size: 0.82rem; font-weight: 600;">Manage Bookings</button>
+                        <button class="action-btn edit" type="button" data-nav-tab="checkins" style="padding: 10px; font-size: 0.82rem; font-weight: 600;">Manage Check-Ins</button>
+                        <button class="action-btn edit" type="button" data-nav-tab="payments" style="padding: 10px; font-size: 0.82rem; font-weight: 600;">Manage Payments</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </article>
 
               <article class="card tab-panel hidden" id="panel-rooms">
@@ -130,12 +207,22 @@
                     <option value="occupied">Occupied</option>
                     <option value="maintenance">Maintenance</option>
                   </select>
+                  <label class="file-label">
+                    Room Image
+                    <input
+                      id="roomImage"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                    />
+                  </label>
                   <button type="submit" class="btn primary">Add Room</button>
                 </form>
+                <p id="roomUploadMessage" class="message"></p>
                 <div class="table-wrap">
                   <table>
                     <thead>
                       <tr>
+                        <th>Image</th>
                         <th>#</th>
                         <th>Type</th>
                         <th>Cap</th>
@@ -153,6 +240,12 @@
                 <h3>Bookings</h3>
                 <form id="bookingForm" class="grid-2">
                   <input id="guestName" placeholder="Guest Name" required />
+                  <input
+                    id="bookingContactNumber"
+                    type="tel"
+                    placeholder="Contact Number (e.g. 09171234567)"
+                    required
+                  />
                   <select id="bookingRoomId" required>
                     <option value="">Select Room</option>
                   </select>
@@ -194,6 +287,7 @@
                     <thead>
                       <tr>
                         <th>Guest</th>
+                        <th>Contact</th>
                         <th>Room</th>
                         <th>Dates</th>
                         <th>Status</th>
@@ -244,67 +338,7 @@
                 </div>
               </article>
 
-              <article class="card tab-panel hidden" id="panel-amenities">
-                <h3>Amenities</h3>
-                <form id="amenityForm" class="grid-2">
-                  <input id="amenityName" placeholder="Amenity Name" required />
-                  <input
-                    id="amenityLocation"
-                    placeholder="Location / Floor"
-                    required
-                  />
-                  <input
-                    id="amenityPrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="Price"
-                    required
-                  />
-                  <select id="amenityAvailability" required>
-                    <option value="available">Available</option>
-                    <option value="limited">Limited</option>
-                    <option value="unavailable">Unavailable</option>
-                  </select>
-                  <button type="submit" class="btn primary">Add Amenity</button>
-                </form>
-                <div class="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Location</th>
-                        <th>Price</th>
-                        <th>Availability</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="amenitiesTableBody"></tbody>
-                  </table>
-                </div>
 
-                <h3 class="subsection-heading">Amenity Requests</h3>
-                <p class="section-note">
-                  User-submitted amenity requests waiting for admin action.
-                </p>
-                <div class="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Guest</th>
-                        <th>Amenity</th>
-                        <th>Location</th>
-                        <th>Qty</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th>Requested</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody id="amenityRequestsTableBody"></tbody>
-                  </table>
-                </div>
-              </article>
 
               <article class="card tab-panel hidden" id="panel-payments">
                 <h3>Payments</h3>
@@ -336,6 +370,34 @@
                     <option value="pending">Pending</option>
                     <option value="failed">Failed</option>
                   </select>
+                  <fieldset class="pay-timing-fieldset">
+                    <legend>Payment Timing</legend>
+                    <div class="pay-timing-options">
+                      <label class="pay-timing-label">
+                        <input
+                          type="radio"
+                          name="payTiming"
+                          value="now"
+                          checked
+                        />
+                        <span class="pay-timing-card">
+                          <strong>Pay Now</strong>
+                          <small>Process payment immediately</small>
+                        </span>
+                      </label>
+                      <label class="pay-timing-label">
+                        <input
+                          type="radio"
+                          name="payTiming"
+                          value="later"
+                        />
+                        <span class="pay-timing-card">
+                          <strong>Pay Later</strong>
+                          <small>Guest pays at check-in</small>
+                        </span>
+                      </label>
+                    </div>
+                  </fieldset>
                   <button type="submit" class="btn primary">
                     Record Payment
                   </button>

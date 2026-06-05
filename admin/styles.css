@@ -123,7 +123,7 @@ select {
   padding: 10px 12px;
   background: #ffffff;
   color: var(--text);
-  transition: all 170ms ease;
+  transition: border-color 120ms ease, outline 120ms ease;
 }
 
 input:focus,
@@ -139,7 +139,7 @@ select:focus {
   color: var(--text);
   padding: 10px 12px;
   cursor: pointer;
-  transition: all 170ms ease;
+  transition: background 120ms ease, border-color 120ms ease;
 }
 
 .btn.primary {
@@ -214,7 +214,7 @@ select:focus {
   cursor: pointer;
   font: inherit;
   font-weight: 500;
-  transition: all 170ms ease;
+  transition: background 120ms ease, border-color 120ms ease;
 }
 
 .tab-btn:hover {
@@ -338,6 +338,70 @@ th {
   z-index: 1;
 }
 
+/* ── Room image styles ── */
+
+.room-img-cell {
+  width: 56px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f0f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.room-img-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.room-img-placeholder {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.modal-image-preview {
+  width: 80px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f0f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ccddfb;
+  margin-bottom: 4px;
+}
+
+.room-img-thumb-modal {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.file-label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.file-label input[type="file"] {
+  border: 1px dashed #c8dcff;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #f9fbff;
+  cursor: pointer;
+}
+
+/* ── Action buttons ── */
+
 .action-btn {
   border: 1px solid #c9dcff;
   border-radius: 10px;
@@ -364,14 +428,7 @@ th {
   min-width: 68px;
 }
 
-.amenity-request-actions {
-  align-items: center;
-  gap: 8px;
-}
-
-.amenity-request-actions .action-btn {
-  min-width: 68px;
-}
+/* ── Status pills ── */
 
 .status-pill {
   display: inline-flex;
@@ -416,6 +473,14 @@ th {
   color: var(--danger);
 }
 
+.status-pill.pay-later {
+  border-color: #b8c9e5;
+  background: #edf4ff;
+  color: #2f62ad;
+}
+
+/* ── Action button variants ── */
+
 .action-btn.edit {
   background: #edf4ff;
   border-color: #c9dcff;
@@ -439,6 +504,73 @@ th {
   border-color: rgba(195, 71, 71, 0.4);
   color: var(--danger);
 }
+
+/* ── Pay Now / Pay Later ── */
+
+.pay-timing-fieldset {
+  border: 1px solid #d0e0ff;
+  border-radius: 14px;
+  padding: 12px;
+  margin: 0;
+  grid-column: 1 / -1;
+}
+
+.pay-timing-fieldset legend {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text);
+  padding: 0 6px;
+}
+
+.pay-timing-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.pay-timing-label {
+  cursor: pointer;
+  display: block;
+}
+
+.pay-timing-label input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pay-timing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid #c8dcff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f9fbff;
+  text-align: center;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.pay-timing-card strong {
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.pay-timing-card small {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.pay-timing-label input[type="radio"]:checked + .pay-timing-card {
+  border-color: var(--primary);
+  background: #edf4ff;
+  box-shadow: 0 0 0 2px rgba(29, 103, 234, 0.12);
+}
+
+/* ── Modal ── */
 
 .modal {
   position: fixed;
@@ -601,5 +733,119 @@ th {
   .login-card {
     margin: 4vh auto;
     padding: 20px 16px;
+  }
+
+  .pay-timing-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Overview Dashboard Widgets ── */
+.overview-widgets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.overview-column {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.widget-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #dbe8ff;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.widget-card h4 {
+  margin: 0 0 12px 0;
+  font-family: "Archivo", sans-serif;
+  color: #0d3f90;
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid #edf4ff;
+  padding-bottom: 8px;
+}
+
+.widget-table-wrap {
+  margin-top: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.widget-table-wrap table {
+  min-width: auto;
+}
+
+.widget-table-wrap th,
+.widget-table-wrap td {
+  padding: 8px 6px;
+  font-size: 0.82rem;
+}
+
+.occupancy-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 14px;
+  margin-top: 6px;
+}
+
+.occupancy-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.occupancy-row span {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.occupancy-row strong {
+  font-size: 1.3rem;
+  color: var(--text);
+  font-family: "Archivo", sans-serif;
+}
+
+.occupancy-progress-bar {
+  display: flex;
+  height: 8px;
+  background: #f0f5ff;
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid #e1ecff;
+}
+
+.progress-segment {
+  height: 100%;
+}
+
+.progress-segment.available {
+  background: #bae9cd;
+}
+
+.progress-segment.occupied {
+  background: #c7dbff;
+}
+
+.progress-segment.maintenance {
+  background: #f2d6a0;
+}
+
+.quick-nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .overview-widgets {
+    grid-template-columns: 1fr;
   }
 }

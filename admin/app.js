@@ -10,6 +10,13 @@ import {
   set,
   update,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCYsD5avcJWzW_SOvuNWD4ZRRrNFiXtH-o",
@@ -32,6 +39,7 @@ try {
 }
 
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -53,16 +61,11 @@ const paidRevenue = document.getElementById("paidRevenue");
 const roomForm = document.getElementById("roomForm");
 const bookingForm = document.getElementById("bookingForm");
 const checkinForm = document.getElementById("checkinForm");
-const amenityForm = document.getElementById("amenityForm");
 const paymentForm = document.getElementById("paymentForm");
 
 const roomsTableBody = document.getElementById("roomsTableBody");
 const bookingsTableBody = document.getElementById("bookingsTableBody");
 const checkinsTableBody = document.getElementById("checkinsTableBody");
-const amenitiesTableBody = document.getElementById("amenitiesTableBody");
-const amenityRequestsTableBody = document.getElementById(
-  "amenityRequestsTableBody",
-);
 const paymentsTableBody = document.getElementById("paymentsTableBody");
 
 const bookingRoomId = document.getElementById("bookingRoomId");
@@ -72,6 +75,9 @@ const paymentBookingId = document.getElementById("paymentBookingId");
 const checkinGuestNameInput = document.getElementById("checkinGuestName");
 const paymentGuestNameInput = document.getElementById("paymentGuestName");
 const paymentAmountInput = document.getElementById("paymentAmount");
+
+const roomImageInput = document.getElementById("roomImage");
+const roomUploadMessage = document.getElementById("roomUploadMessage");
 
 const editModal = document.getElementById("editModal");
 const modalTitle = document.getElementById("modalTitle");
@@ -84,11 +90,11 @@ const modalCancelBtn = document.getElementById("modalCancelBtn");
 let roomsCache = {};
 let bookingsCache = {};
 let checkinsCache = {};
-let amenitiesCache = {};
-let amenityRequestsCache = {};
 let paymentsCache = {};
+let roomImageCache = {};
 let tabsInitialized = false;
 let modalState = null;
+let activateTab = null;
 
 const formatMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
 
@@ -104,6 +110,7 @@ const mapPaymentStateToBookingState = {
   paid: "paid",
   pending: "pending",
   failed: "unpaid",
+  "pay-later": "pay-later",
 };
 
 const EDIT_SCHEMAS = {
@@ -129,21 +136,6 @@ const EDIT_SCHEMAS = {
       },
     ],
   },
-  amenities: {
-    title: "Edit Amenity",
-    fields: [
-      { key: "name", label: "Name", type: "text", required: true },
-      { key: "location", label: "Location", type: "text", required: true },
-      { key: "price", label: "Price", type: "number", min: 0, required: true },
-      {
-        key: "availability",
-        label: "Availability",
-        type: "select",
-        options: ["available", "limited", "unavailable"],
-        required: true,
-      },
-    ],
-  },
   payments: {
     title: "Edit Payment",
     fields: [
@@ -165,7 +157,7 @@ const EDIT_SCHEMAS = {
         key: "status",
         label: "Status",
         type: "select",
-        options: ["paid", "pending", "failed"],
+        options: ["paid", "pending", "failed", "pay-later"],
         required: true,
       },
     ],
@@ -180,9 +172,6 @@ function parseDateInput(value) {
 function getCollectionCache(collection) {
   if (collection === "rooms") {
     return roomsCache;
-  }
-  if (collection === "amenities") {
-    return amenitiesCache;
   }
   if (collection === "payments") {
     return paymentsCache;
@@ -212,7 +201,7 @@ function openModal(collection, id) {
   modalTitle.textContent = schema.title;
   modalMessage.textContent = "";
 
-  modalFields.innerHTML = schema.fields
+  let fieldsHtml = schema.fields
     .map((field) => {
       const value = record[field.key] ?? "";
       const fieldId = `modal-${field.key}`;
@@ -231,6 +220,50 @@ function openModal(collection, id) {
       return `<label for="${fieldId}">${field.label}<input id="${fieldId}" name="${field.key}" type="${field.type}" value="${escapeHtml(value)}" ${field.required ? "required" : ""} ${field.min !== undefined ? `min="${field.min}"` : ""} /></label>`;
     })
     .join("");
+
+  if (collection === "rooms") {
+    fieldsHtml += `
+      <div class="modal-image-section" style="margin-top: 12px; display: grid; gap: 8px;">
+        <label style="color: #0d3f90; font-size: 0.86rem; font-weight: 500;">Current Room Image</label>
+        <div id="modal-image-preview" class="modal-image-preview">
+          <div class="room-img-placeholder">Checking storage...</div>
+        </div>
+        <label class="file-label">
+          Upload New Image
+          <input
+            id="modal-room-image-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+          />
+        </label>
+      </div>
+    `;
+  }
+
+  modalFields.innerHTML = fieldsHtml;
+
+  if (collection === "rooms") {
+    const previewContainer = document.getElementById("modal-image-preview");
+    getRoomImageUrl(id).then((url) => {
+      if (url) {
+        previewContainer.innerHTML = `<img src="${url}" alt="Room" class="room-img-thumb-modal" />`;
+      } else {
+        previewContainer.innerHTML = `<div class="room-img-placeholder">No image</div>`;
+      }
+    });
+
+    const fileInput = document.getElementById("modal-room-image-input");
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previewContainer.innerHTML = `<img src="${e.target.result}" alt="Preview" class="room-img-thumb-modal" />`;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
 
   editModal.classList.remove("hidden");
   editModal.setAttribute("aria-hidden", "false");
@@ -303,19 +336,43 @@ async function saveModalEdit() {
     updates.paidAt = payload.status === "paid" ? new Date().toISOString() : "";
   }
 
-  await update(ref(db, `${collection}/${id}`), updates);
-
-  if (collection === "payments") {
-    const payment = paymentsCache[id];
-    if (payment?.bookingId) {
-      await update(ref(db, `bookings/${payment.bookingId}`), {
-        paymentStatus:
-          mapPaymentStateToBookingState[payload.status] || "pending",
-      });
-    }
+  const submitBtn = modalForm.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
   }
 
-  closeModal();
+  try {
+    await update(ref(db, `${collection}/${id}`), updates);
+
+    if (collection === "rooms") {
+      const fileInput = document.getElementById("modal-room-image-input");
+      const file = fileInput?.files?.[0];
+      if (file) {
+        modalMessage.textContent = "Uploading image...";
+        const url = await uploadRoomImage(id, file);
+        roomImageCache[id] = url;
+        loadRoomImage(id);
+      }
+    }
+
+    if (collection === "payments") {
+      const payment = paymentsCache[id];
+      if (payment?.bookingId) {
+        await update(ref(db, `bookings/${payment.bookingId}`), {
+          paymentStatus:
+            mapPaymentStateToBookingState[payload.status] || "pending",
+        });
+      }
+    }
+
+    closeModal();
+  } catch (err) {
+    console.error("Save edit failed:", err);
+    modalMessage.textContent = "Error saving changes: " + err.message;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+    }
+  }
 }
 
 async function acceptBooking(id) {
@@ -453,34 +510,6 @@ async function rejectPayment(id) {
   }
 }
 
-async function approveAmenityRequest(id) {
-  const request = amenityRequestsCache[id];
-  if (!request) {
-    return;
-  }
-
-  await update(ref(db, `amenityRequests/${id}`), {
-    status: "approved",
-    reviewedAt: new Date().toISOString(),
-    updatedAt: serverTimestamp(),
-    updatedAtMs: Date.now(),
-  });
-}
-
-async function rejectAmenityRequest(id) {
-  const request = amenityRequestsCache[id];
-  if (!request) {
-    return;
-  }
-
-  await update(ref(db, `amenityRequests/${id}`), {
-    status: "rejected",
-    reviewedAt: new Date().toISOString(),
-    updatedAt: serverTimestamp(),
-    updatedAtMs: Date.now(),
-  });
-}
-
 function ensureAuth() {
   const token = localStorage.getItem("rbmsAdmin");
   if (token === "ok") {
@@ -514,7 +543,7 @@ function initializeTabs() {
     return;
   }
 
-  const activateTab = (name) => {
+  activateTab = (name) => {
     tabButtons.forEach((button) => {
       button.classList.toggle("active", button.dataset.tab === name);
     });
@@ -537,6 +566,154 @@ logoutBtn.addEventListener("click", () => {
   location.reload();
 });
 
+/* ── Room image upload helper ── */
+
+async function uploadRoomImage(roomId, file) {
+  const ext = file.name.split(".").pop().toLowerCase();
+
+  // Clean up any existing image files with different extensions to avoid conflicts
+  const extensions = ["jpg", "jpeg", "png", "webp"];
+  for (const e of extensions) {
+    if (e !== ext) {
+      try {
+        const oldRef = storageRef(storage, `rooms/${roomId}.${e}`);
+        await deleteObject(oldRef);
+      } catch (err) {
+        // Ignore error if file didn't exist
+      }
+    }
+  }
+
+  const path = `rooms/${roomId}.${ext}`;
+  const sRef = storageRef(storage, path);
+  await uploadBytes(sRef, file);
+  const url = await getDownloadURL(sRef);
+  return url;
+}
+
+async function getRoomImageUrl(roomId) {
+  if (roomImageCache[roomId] !== undefined) {
+    return roomImageCache[roomId];
+  }
+
+  const extensions = ["jpg", "jpeg", "png", "webp"];
+  for (const ext of extensions) {
+    try {
+      const url = await getDownloadURL(
+        storageRef(storage, `rooms/${roomId}.${ext}`),
+      );
+      roomImageCache[roomId] = url;
+      return url;
+    } catch {
+      /* try next */
+    }
+  }
+
+  roomImageCache[roomId] = null;
+  return null;
+}
+
+/* ── Overview Dashboard Helpers ── */
+
+function updateOccupancyBreakdown(rooms) {
+  const roomsList = Object.values(rooms);
+  const total = roomsList.length;
+
+  const available = roomsList.filter(
+    (r) => String(r.status).toLowerCase() === "available",
+  ).length;
+  const occupied = roomsList.filter(
+    (r) => String(r.status).toLowerCase() === "occupied",
+  ).length;
+  const maintenance = roomsList.filter(
+    (r) => String(r.status).toLowerCase() === "maintenance",
+  ).length;
+
+  const countAvailable = document.getElementById("occupancyAvailable");
+  const countOccupied = document.getElementById("occupancyOccupied");
+  const countMaintenance = document.getElementById("occupancyMaintenance");
+
+  if (countAvailable) countAvailable.textContent = String(available);
+  if (countOccupied) countOccupied.textContent = String(occupied);
+  if (countMaintenance) countMaintenance.textContent = String(maintenance);
+
+  const availablePct = total > 0 ? (available / total) * 100 : 0;
+  const occupiedPct = total > 0 ? (occupied / total) * 100 : 0;
+  const maintenancePct = total > 0 ? (maintenance / total) * 100 : 0;
+
+  const barAvailable = document.getElementById("occupancyBarAvailable");
+  const barOccupied = document.getElementById("occupancyBarOccupied");
+  const barMaintenance = document.getElementById("occupancyBarMaintenance");
+
+  if (barAvailable) barAvailable.style.width = `${availablePct}%`;
+  if (barOccupied) barOccupied.style.width = `${occupiedPct}%`;
+  if (barMaintenance) barMaintenance.style.width = `${maintenancePct}%`;
+}
+
+function updateRecentBookings(bookings) {
+  const container = document.getElementById("overviewRecentBookings");
+  if (!container) return;
+
+  const sorted = Object.entries(bookings)
+    .sort((a, b) => (b[1].createdAtMs || 0) - (a[1].createdAtMs || 0))
+    .slice(0, 5);
+
+  if (sorted.length === 0) {
+    container.innerHTML = `<tr><td colspan="4" class="room-img-placeholder" style="text-align: center; padding: 12px;">No bookings found</td></tr>`;
+    return;
+  }
+
+  container.innerHTML = sorted
+    .map(([id, booking]) => {
+      const room = roomsCache[booking.roomId];
+      const roomLabel = room ? room.number : "Room";
+      return `
+        <tr>
+          <td><strong>${escapeHtml(booking.guestName)}</strong></td>
+          <td>${escapeHtml(roomLabel)}</td>
+          <td style="font-size: 0.8rem; color: var(--muted);">${escapeHtml(booking.checkInDate)} to ${escapeHtml(booking.checkOutDate)}</td>
+          <td><span class="status-pill" style="padding: 2px 8px; font-size: 0.72rem;">${escapeHtml(booking.status || "reserved")}</span></td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function updateRecentPayments(payments) {
+  const container = document.getElementById("overviewRecentPayments");
+  if (!container) return;
+
+  const sorted = Object.values(payments)
+    .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0))
+    .slice(0, 5);
+
+  if (sorted.length === 0) {
+    container.innerHTML = `<tr><td colspan="3" class="room-img-placeholder" style="text-align: center; padding: 12px;">No payments found</td></tr>`;
+    return;
+  }
+
+  container.innerHTML = sorted
+    .map((payment) => {
+      const paymentStatus = String(payment.status || "pending").toLowerCase();
+      const statusClass = ["paid", "pending", "failed", "pay-later"].includes(
+        paymentStatus,
+      )
+        ? paymentStatus
+        : "pending";
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(payment.guestName || "Guest")}</strong></td>
+          <td>${formatMoney(payment.amount)}</td>
+          <td><span class="status-pill ${statusClass}" style="padding: 2px 8px; font-size: 0.72rem;">${escapeHtml(payment.status || "pending")}</span></td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+/* ── Form submissions ── */
+
 roomForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -552,6 +729,24 @@ roomForm.addEventListener("submit", async (event) => {
 
   const roomRef = push(ref(db, "rooms"));
   await set(roomRef, payload);
+
+  /* Upload image if provided */
+  const file = roomImageInput?.files?.[0];
+  if (file) {
+    try {
+      roomUploadMessage.textContent = "Uploading image…";
+      const url = await uploadRoomImage(roomRef.key, file);
+      roomImageCache[roomRef.key] = url;
+      roomUploadMessage.textContent = "Image uploaded!";
+      setTimeout(() => {
+        roomUploadMessage.textContent = "";
+      }, 3000);
+    } catch (err) {
+      console.error("Room image upload failed:", err);
+      roomUploadMessage.textContent = "Image upload failed.";
+    }
+  }
+
   roomForm.reset();
 });
 
@@ -581,6 +776,20 @@ bookingForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  const guestName = document.getElementById("guestName").value.trim();
+  const contactNumber = document
+    .getElementById("bookingContactNumber")
+    .value.trim();
+
+  if (!guestName) {
+    alert("Guest name is required.");
+    return;
+  }
+  if (!contactNumber) {
+    alert("Contact number is required.");
+    return;
+  }
+
   const msPerDay = 1000 * 60 * 60 * 24;
   const nights = Math.max(1, Math.ceil((checkOut - checkIn) / msPerDay));
 
@@ -589,7 +798,8 @@ bookingForm.addEventListener("submit", async (event) => {
   const totalAmount = enteredTotal > 0 ? enteredTotal : computedTotal;
 
   const payload = {
-    guestName: document.getElementById("guestName").value.trim(),
+    guestName,
+    contactNumber,
     roomId,
     roomNumber: room.number || "",
     roomType: room.type || "",
@@ -655,23 +865,6 @@ checkinForm.addEventListener("submit", async (event) => {
   checkinForm.reset();
 });
 
-amenityForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const payload = {
-    name: document.getElementById("amenityName").value.trim(),
-    location: document.getElementById("amenityLocation").value.trim(),
-    price: Number(document.getElementById("amenityPrice").value),
-    availability: document.getElementById("amenityAvailability").value,
-    createdAt: serverTimestamp(),
-    createdAtMs: Date.now(),
-  };
-
-  const amenityRef = push(ref(db, "amenities"));
-  await set(amenityRef, payload);
-  amenityForm.reset();
-});
-
 paymentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -682,7 +875,15 @@ paymentForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const status = document.getElementById("paymentState").value;
+  const payTiming = document.querySelector(
+    'input[name="payTiming"]:checked',
+  )?.value;
+
+  let status = document.getElementById("paymentState").value;
+  if (payTiming === "later") {
+    status = "pay-later";
+  }
+
   const method = document.getElementById("paymentMethod").value;
   const amount = Number(paymentAmountInput.value || booking.totalAmount || 0);
 
@@ -708,6 +909,7 @@ paymentForm.addEventListener("submit", async (event) => {
     amount,
     method,
     status,
+    payTiming: payTiming || "now",
     paidAt: status === "paid" ? new Date().toISOString() : "",
     createdAt: serverTimestamp(),
     createdAtMs: Date.now(),
@@ -733,6 +935,7 @@ paymentForm.addEventListener("submit", async (event) => {
       amount,
       method,
       status,
+      payTiming: payTiming || "now",
       paidAt: status === "paid" ? new Date().toISOString() : "",
       updatedAt: serverTimestamp(),
       updatedAtMs: Date.now(),
@@ -783,12 +986,12 @@ editModal.addEventListener("click", (event) => {
   }
 });
 
+/* ── Realtime subscriptions ── */
+
 function subscribeAll() {
   subscribeRooms();
   subscribeBookings();
   subscribeCheckins();
-  subscribeAmenities();
-  subscribeAmenityRequests();
   subscribePayments();
 }
 
@@ -799,6 +1002,7 @@ function subscribeRooms() {
     renderRooms(rooms);
     populateRoomSelects(rooms);
     totalRooms.textContent = String(Object.keys(rooms).length);
+    updateOccupancyBreakdown(rooms);
   });
 }
 
@@ -816,6 +1020,7 @@ function subscribeBookings() {
     ).length;
 
     activeBookings.textContent = String(active);
+    updateRecentBookings(bookings);
   });
 }
 
@@ -833,22 +1038,6 @@ function subscribeCheckins() {
   });
 }
 
-function subscribeAmenities() {
-  onValue(ref(db, "amenities"), (snapshot) => {
-    const amenities = snapshot.val() || {};
-    amenitiesCache = amenities;
-    renderAmenities(amenities);
-  });
-}
-
-function subscribeAmenityRequests() {
-  onValue(ref(db, "amenityRequests"), (snapshot) => {
-    const requests = snapshot.val() || {};
-    amenityRequestsCache = requests;
-    renderAmenityRequests(requests);
-  });
-}
-
 function subscribePayments() {
   onValue(ref(db, "payments"), (snapshot) => {
     const payments = snapshot.val() || {};
@@ -862,6 +1051,7 @@ function subscribePayments() {
       .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
     paidRevenue.textContent = formatMoney(revenue);
+    updateRecentPayments(payments);
   });
 }
 
@@ -891,11 +1081,19 @@ function populateBookingSelects(bookings) {
     '<option value="">Select Booking</option>' + options;
 }
 
+/* ── Render functions ── */
+
 function renderRooms(rooms) {
-  roomsTableBody.innerHTML = Object.entries(rooms)
+  const entries = Object.entries(rooms);
+  roomsTableBody.innerHTML = entries
     .map(
       ([id, room]) => `
       <tr>
+        <td>
+          <div class="room-img-cell" id="room-img-${id}">
+            <div class="room-img-placeholder">…</div>
+          </div>
+        </td>
         <td>${escapeHtml(room.number)}</td>
         <td>${escapeHtml(room.type)}</td>
         <td>${escapeHtml(room.capacity)}</td>
@@ -910,6 +1108,23 @@ function renderRooms(rooms) {
       </tr>`,
     )
     .join("");
+
+  /* Load images asynchronously */
+  for (const [id] of entries) {
+    loadRoomImage(id);
+  }
+}
+
+async function loadRoomImage(roomId) {
+  const cell = document.getElementById(`room-img-${roomId}`);
+  if (!cell) return;
+
+  const url = await getRoomImageUrl(roomId);
+  if (url) {
+    cell.innerHTML = `<img src="${url}" alt="Room" class="room-img-thumb" />`;
+  } else {
+    cell.innerHTML = `<div class="room-img-placeholder">No image</div>`;
+  }
 }
 
 function renderBookings(bookings) {
@@ -932,6 +1147,7 @@ function renderBookings(bookings) {
       return `
       <tr>
         <td>${escapeHtml(booking.guestName)}</td>
+        <td>${escapeHtml(booking.contactNumber || "-")}</td>
         <td>${escapeHtml(roomLabel)}</td>
         <td>${escapeHtml(booking.checkInDate)} to ${escapeHtml(booking.checkOutDate)}</td>
         <td>${escapeHtml(booking.status || "reserved")}</td>
@@ -972,92 +1188,17 @@ function renderCheckins(checkins) {
     .join("");
 }
 
-function renderAmenities(amenities) {
-  amenitiesTableBody.innerHTML = Object.entries(amenities)
-    .map(
-      ([id, amenity]) => `
-      <tr>
-        <td>${escapeHtml(amenity.name)}</td>
-        <td>${escapeHtml(amenity.location)}</td>
-        <td>${formatMoney(amenity.price)}</td>
-        <td>${escapeHtml(amenity.availability)}</td>
-        <td>
-          <div class="action-group">
-            <button class="action-btn edit" data-edit="amenities" data-id="${id}">Edit</button>
-            <button class="action-btn danger" data-del="amenities" data-id="${id}">Delete</button>
-          </div>
-        </td>
-      </tr>`,
-    )
-    .join("");
-}
-
-function renderAmenityRequests(requests) {
-  const rows = Object.entries(requests).sort(
-    (a, b) => Number(b[1]?.createdAtMs || 0) - Number(a[1]?.createdAtMs || 0),
-  );
-
-  if (!rows.length) {
-    amenityRequestsTableBody.innerHTML =
-      '<tr><td colspan="8">No amenity requests yet.</td></tr>';
-    return;
-  }
-
-  amenityRequestsTableBody.innerHTML = rows
-    .map(([id, request]) => {
-      const amenity = amenitiesCache[request.amenityId];
-      const requestStatus = String(request.status || "pending").toLowerCase();
-      const statusClass =
-        requestStatus === "approved" || requestStatus === "fulfilled"
-          ? "approved"
-          : requestStatus === "rejected" || requestStatus === "cancelled"
-            ? "rejected"
-            : "pending";
-
-      const guestLabel =
-        request.guestName || request.userEmail || "Unknown Guest";
-      const amenityLabel = request.amenityName || amenity?.name || "Unknown";
-      const locationLabel = request.amenityLocation || amenity?.location || "-";
-      const quantity = Number(request.quantity || 1);
-      const totalAmount = Number(
-        request.totalAmount || Number(request.unitPrice || 0) * quantity,
-      );
-      const requestedAt = request.createdAtMs
-        ? new Date(request.createdAtMs).toLocaleString()
-        : "-";
-
-      const reviewActions =
-        requestStatus === "pending"
-          ? `<button class="action-btn approve" data-approve-amenity-request data-id="${id}">Accept</button>
-             <button class="action-btn reject" data-reject-amenity-request data-id="${id}">Reject</button>`
-          : "";
-
-      return `
-      <tr>
-        <td>${escapeHtml(guestLabel)}</td>
-        <td>${escapeHtml(amenityLabel)}</td>
-        <td>${escapeHtml(locationLabel)}</td>
-        <td>${escapeHtml(quantity)}</td>
-        <td>${formatMoney(totalAmount)}</td>
-        <td><span class="status-pill ${statusClass}">${escapeHtml(requestStatus)}</span></td>
-        <td>${escapeHtml(requestedAt)}</td>
-        <td>
-          <div class="action-group amenity-request-actions">
-            ${reviewActions}
-            <button class="action-btn danger" data-del="amenityRequests" data-id="${id}">Delete</button>
-          </div>
-        </td>
-      </tr>`;
-    })
-    .join("");
-}
-
 function renderPayments(payments) {
   paymentsTableBody.innerHTML = Object.entries(payments)
     .map(([id, payment]) => {
       const booking = bookingsCache[payment.bookingId];
       const paymentStatus = String(payment.status || "pending").toLowerCase();
-      const statusClass = ["paid", "pending", "failed"].includes(paymentStatus)
+      const statusClass = [
+        "paid",
+        "pending",
+        "failed",
+        "pay-later",
+      ].includes(paymentStatus)
         ? paymentStatus
         : "pending";
 
@@ -1076,7 +1217,7 @@ function renderPayments(payments) {
               : "Unknown booking");
 
       const pendingActions =
-        paymentStatus === "pending"
+        paymentStatus === "pending" || paymentStatus === "pay-later"
           ? `<button class="action-btn approve" data-approve-payment data-id="${id}">Accept</button>
              <button class="action-btn reject" data-reject-payment data-id="${id}">Reject</button>`
           : "";
@@ -1091,6 +1232,7 @@ function renderPayments(payments) {
         <td>
           <div class="action-group payment-actions">
             ${pendingActions}
+            <button class="action-btn edit" data-edit="payments" data-id="${id}">Edit</button>
             <button class="action-btn danger" data-del="payments" data-id="${id}">Delete</button>
           </div>
         </td>
@@ -1098,6 +1240,8 @@ function renderPayments(payments) {
     })
     .join("");
 }
+
+/* ── Global click delegation ── */
 
 document.addEventListener("click", async (event) => {
   const target = event.target;
@@ -1107,6 +1251,14 @@ document.addEventListener("click", async (event) => {
 
   const button = target.closest("button");
   if (!button) {
+    return;
+  }
+
+  if (button.matches("[data-nav-tab]")) {
+    const tabName = button.getAttribute("data-nav-tab");
+    if (tabName && activateTab) {
+      activateTab(tabName);
+    }
     return;
   }
 
@@ -1147,22 +1299,6 @@ document.addEventListener("click", async (event) => {
     const id = button.getAttribute("data-id");
     if (id) {
       await rejectCheckin(id);
-    }
-    return;
-  }
-
-  if (button.matches("[data-approve-amenity-request]")) {
-    const id = button.getAttribute("data-id");
-    if (id) {
-      await approveAmenityRequest(id);
-    }
-    return;
-  }
-
-  if (button.matches("[data-reject-amenity-request]")) {
-    const id = button.getAttribute("data-id");
-    if (id) {
-      await rejectAmenityRequest(id);
     }
     return;
   }

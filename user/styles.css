@@ -103,12 +103,13 @@ p {
   gap: 8px;
 }
 
+/* Reduced transitions — kept subtle but not distracting */
 .switch-btn,
 .nav-btn,
 .btn,
 input,
 select {
-  transition: all 170ms ease;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .switch-btn,
@@ -476,10 +477,11 @@ select:focus {
   background: linear-gradient(160deg, #f9fcff 0%, #f0f6ff 100%);
 }
 
+/* Room grid and cards */
 .room-grid {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 
@@ -487,6 +489,38 @@ select:focus {
   border: 1px solid #d9e7ff;
   border-radius: 14px;
   background: linear-gradient(160deg, #ffffff 0%, #f5f9ff 100%);
+  overflow: hidden;
+}
+
+.room-img-wrap {
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #dbe8ff 0%, #c4d9ff 100%);
+}
+
+.room-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #dbe8ff 0%, #c4d9ff 100%);
+}
+
+.room-img-icon {
+  font-size: 2.2rem;
+  opacity: 0.5;
+}
+
+.room-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.room-card-body {
   padding: 12px;
 }
 
@@ -506,6 +540,7 @@ select:focus {
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
 }
 
 .card-action.request {
@@ -532,7 +567,7 @@ select:focus {
   cursor: not-allowed;
 }
 
-.room-card p {
+.room-card-body p {
   margin-top: 3px;
   font-size: 0.9rem;
 }
@@ -549,25 +584,70 @@ select:focus {
   text-transform: capitalize;
 }
 
-.amenities-grid {
-  margin-top: 12px;
+/* Pay Now / Pay Later */
+.pay-timing-fieldset {
+  border: 1px solid #c8dcff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 0;
+}
+
+.pay-timing-fieldset legend {
+  color: #244b85;
+  font-size: 0.93rem;
+  font-weight: 500;
+  padding: 0 4px;
+}
+
+.pay-timing-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
 }
 
-.amenity-card {
-  border: 1px solid #d9e7ff;
-  border-radius: 14px;
-  background: linear-gradient(160deg, #ffffff 0%, #f5f9ff 100%);
-  padding: 12px;
+.pay-timing-label {
+  display: block;
+  cursor: pointer;
 }
 
-.amenity-price {
-  display: inline-block;
-  margin-top: 8px;
-  color: #1a5ece;
-  font-weight: 700;
+.pay-timing-label input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.pay-timing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 2px solid #d9e7ff;
+  border-radius: 10px;
+  padding: 10px;
+  background: #f8fbff;
+  text-align: center;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.pay-timing-card strong {
+  font-size: 0.88rem;
+  color: #244b85;
+}
+
+.pay-timing-card small {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.pay-timing-label input[type="radio"]:checked + .pay-timing-card {
+  border-color: var(--primary);
+  background: #edf4ff;
+}
+
+.pay-timing-label input[type="radio"]:checked + .pay-timing-card strong {
+  color: var(--primary);
 }
 
 .muted {
@@ -716,5 +796,9 @@ th {
     top: 80px;
     right: 10px;
     width: min(340px, calc(100vw - 20px));
+  }
+
+  .pay-timing-options {
+    grid-template-columns: 1fr;
   }
 }

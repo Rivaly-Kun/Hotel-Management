@@ -7,18 +7,14 @@ import {
 } from "./services/authService.js";
 import {
   createBooking,
-  createAmenityRequest,
   createPayment,
   subscribeActiveBookings,
-  subscribeAmenities,
   subscribeRooms,
-  subscribeUserAmenityRequests,
   subscribeUserBookings,
   subscribeUserPayments,
 } from "./services/dataService.js";
 import {
   money,
-  renderAmenities,
   renderBookingOptions,
   renderBookings,
   renderPayments,
@@ -49,9 +45,9 @@ const bookingRoomSelect = document.getElementById("bookingRoomId");
 const bookingMessage = document.getElementById("bookingMessage");
 const checkInDateInput = document.getElementById("checkInDate");
 const checkOutDateInput = document.getElementById("checkOutDate");
+const bookingGuestNameInput = document.getElementById("bookingGuestName");
+const bookingContactNumberInput = document.getElementById("bookingContactNumber");
 
-const amenitiesList = document.getElementById("amenitiesList");
-const amenityMessage = document.getElementById("amenityMessage");
 const bookingsTableBody = document.getElementById("bookingsTableBody");
 const paymentsTableBody = document.getElementById("paymentsTableBody");
 
@@ -71,8 +67,6 @@ const state = {
   bookings: [],
   bookingsById: {},
   payments: [],
-  amenityRequests: [],
-  amenitiesById: {},
   notifications: [],
   activeBookingsByRoom: {},
   unsubs: [],
@@ -296,6 +290,7 @@ function renderNotifications() {
       paid: `Your payment for ${bookingLabel} was confirmed.`,
       failed: `Your payment for ${bookingLabel} was rejected.`,
       pending: `Your payment for ${bookingLabel} is awaiting admin review.`,
+      "pay-later": `Your booking for ${bookingLabel} is set to Pay Later at check-in.`,
     };
 
     const tone =
@@ -307,34 +302,6 @@ function renderNotifications() {
       message: messageMap[status] || "Payment status updated.",
       tone,
       timestamp: getRecordTimestamp(payment),
-    });
-  });
-
-  state.amenityRequests.forEach((request) => {
-    const status = String(request.status || "pending").toLowerCase();
-    const amenityName = request.amenityName || "amenity request";
-
-    const messageMap = {
-      approved: `Your amenity request for ${amenityName} was approved.`,
-      rejected: `Your amenity request for ${amenityName} was rejected.`,
-      pending: `Your amenity request for ${amenityName} is pending approval.`,
-    };
-
-    const tone =
-      status === "rejected"
-        ? "danger"
-        : status === "approved"
-          ? "success"
-          : "info";
-
-    notifications.push({
-      id: `amenity-request-${request.id}`,
-      title: "Amenity Request",
-      message:
-        messageMap[status] ||
-        `Your amenity request for ${amenityName} was updated.`,
-      tone,
-      timestamp: getRecordTimestamp(request),
     });
   });
 
@@ -365,58 +332,6 @@ function renderNotifications() {
     `,
     )
     .join("");
-}
-
-async function handleAmenityRequest(amenityId) {
-  clearMessage(amenityMessage);
-
-  const user = auth.currentUser;
-  if (!user) {
-    setMessage(amenityMessage, "Please sign in first.");
-    return;
-  }
-
-  const amenity = state.amenitiesById[amenityId];
-  if (!amenity) {
-    setMessage(amenityMessage, "Selected amenity is no longer available.");
-    return;
-  }
-
-  const availability = String(
-    amenity.availability || "available",
-  ).toLowerCase();
-  if (availability === "unavailable") {
-    setMessage(amenityMessage, "This amenity is currently unavailable.");
-    return;
-  }
-
-  const unitPrice = Number(amenity.price || 0);
-
-  try {
-    await createAmenityRequest({
-      userId: user.uid,
-      userEmail: user.email || "",
-      guestName: user.displayName || user.email?.split("@")[0] || "Guest",
-      amenityId,
-      amenityName: amenity.name || "Amenity",
-      amenityLocation: amenity.location || "",
-      unitPrice,
-      quantity: 1,
-      totalAmount: unitPrice,
-    });
-
-    setMessage(
-      amenityMessage,
-      `${amenity.name || "Amenity"} request submitted successfully.`,
-      "success",
-    );
-  } catch (error) {
-    setMessage(
-      amenityMessage,
-      "Could not submit amenity request. Please try again.",
-    );
-    console.error(error);
-  }
 }
 
 function attachRealtimeSubscriptions(user) {
@@ -460,16 +375,6 @@ function attachRealtimeSubscriptions(user) {
   );
 
   state.unsubs.push(
-    subscribeAmenities((amenities) => {
-      state.amenitiesById = Object.fromEntries(
-        amenities.map((amenity) => [amenity.id, amenity]),
-      );
-      renderAmenities(amenitiesList, amenities);
-      renderNotifications();
-    }),
-  );
-
-  state.unsubs.push(
     subscribeUserBookings(user.uid, (bookings) => {
       state.bookings = bookings;
       state.bookingsById = Object.fromEntries(
@@ -486,13 +391,6 @@ function attachRealtimeSubscriptions(user) {
     subscribeUserPayments(user.uid, (payments) => {
       state.payments = payments;
       renderPayments(paymentsTableBody, payments, state.bookingsById);
-      renderNotifications();
-    }),
-  );
-
-  state.unsubs.push(
-    subscribeUserAmenityRequests(user.uid, (requests) => {
-      state.amenityRequests = requests;
       renderNotifications();
     }),
   );
@@ -573,15 +471,6 @@ document.addEventListener("click", async (event) => {
     }
     return;
   }
-
-  const amenityRequestButton = target.closest("[data-amenity-request]");
-  if (amenityRequestButton instanceof HTMLElement) {
-    const amenityId = amenityRequestButton.getAttribute("data-amenity-request");
-    if (amenityId) {
-      await handleAmenityRequest(amenityId);
-    }
-    return;
-  }
 });
 
 bookingForm.addEventListener("submit", async (event) => {
@@ -598,7 +487,21 @@ bookingForm.addEventListener("submit", async (event) => {
   const checkInDate = document.getElementById("checkInDate").value;
   const checkOutDate = document.getElementById("checkOutDate").value;
   const guestCount = Number(document.getElementById("guestCount").value);
+  const guestName = bookingGuestNameInput.value.trim();
+  const contactNumber = bookingContactNumberInput.value.trim();
   const notes = document.getElementById("bookingNotes").value.trim();
+
+  // Verification: Guest name is required
+  if (!guestName) {
+    setMessage(bookingMessage, "Please enter the guest's full name.");
+    return;
+  }
+
+  // Verification: Contact number is required
+  if (!contactNumber) {
+    setMessage(bookingMessage, "Please enter a contact number.");
+    return;
+  }
 
   const room = state.roomsById[roomId];
   if (!room) {
@@ -647,7 +550,8 @@ bookingForm.addEventListener("submit", async (event) => {
     await createBooking({
       userId: user.uid,
       userEmail: user.email,
-      guestName: user.displayName || user.email?.split("@")[0] || "Guest",
+      guestName,
+      contactNumber,
       roomId,
       roomNumber: room.number || "",
       roomType: room.type || "",
@@ -690,6 +594,7 @@ paymentForm.addEventListener("submit", async (event) => {
   const bookingId = paymentBookingSelect.value;
   const amount = Number(paymentAmountInput.value);
   const method = document.getElementById("paymentMethod").value;
+  const payTiming = document.querySelector('input[name="payTiming"]:checked')?.value || "now";
   const booking = state.bookingsById[bookingId];
 
   if (!bookingId) {
@@ -712,6 +617,43 @@ paymentForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  // Pay Later flow
+  if (payTiming === "later") {
+    try {
+      await createPayment({
+        userId: user.uid,
+        userEmail: user.email,
+        guestName:
+          user.displayName ||
+          booking.guestName ||
+          user.email?.split("@")[0] ||
+          "Guest",
+        bookingId,
+        checkInDate: booking.checkInDate || "",
+        checkOutDate: booking.checkOutDate || "",
+        bookingLabel:
+          booking.checkInDate && booking.checkOutDate
+            ? `${booking.checkInDate} to ${booking.checkOutDate}`
+            : "",
+        amount,
+        method,
+        payTiming: "later",
+      });
+
+      paymentForm.reset();
+      setMessage(
+        paymentMessage,
+        "Pay Later selected. Payment will be collected at check-in.",
+        "success",
+      );
+    } catch (error) {
+      setMessage(paymentMessage, "Could not save payment preference. Please try again.");
+      console.error(error);
+    }
+    return;
+  }
+
+  // Pay Now flow
   try {
     await createPayment({
       userId: user.uid,
@@ -730,6 +672,7 @@ paymentForm.addEventListener("submit", async (event) => {
           : "",
       amount,
       method,
+      payTiming: "now",
     });
 
     paymentForm.reset();
@@ -752,8 +695,6 @@ observeAuth((user) => {
     state.bookings = [];
     state.bookingsById = {};
     state.payments = [];
-    state.amenityRequests = [];
-    state.amenitiesById = {};
     state.notifications = [];
     state.activeBookingsByRoom = {};
 
@@ -776,7 +717,6 @@ observeAuth((user) => {
   userDisplayEmail.textContent = user.email || "";
 
   clearMessage(bookingMessage);
-  clearMessage(amenityMessage);
   clearMessage(paymentMessage);
   closeNotificationPanel();
   activatePanel("discover");
